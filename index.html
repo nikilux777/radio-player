@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Internet Radio</title>
+<style>
+  :root{
+    --bg:#141310;
+    --panel:#221f19;
+    --panel-edge:#3a352c;
+    --amber:#ffb347;
+    --amber-dim:#8a6a34;
+    --live:#ff5252;
+    --text:#e7ded0;
+    --text-dim:#9c948a;
+    --mono: 'Space Mono', 'Courier New', monospace;
+    --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+
+  *{ box-sizing:border-box; }
+
+  body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:
+      radial-gradient(circle at 50% 0%, #201d17 0%, var(--bg) 60%);
+    font-family: var(--sans);
+    color:var(--text);
+    padding:24px;
+  }
+
+  .radio-unit{
+    width:100%;
+    max-width:420px;
+    background:
+      linear-gradient(180deg, #2a261f 0%, var(--panel) 12%, var(--panel) 100%);
+    border:1px solid var(--panel-edge);
+    border-radius:18px;
+    padding:22px 22px 26px;
+    box-shadow:
+      0 30px 60px -20px rgba(0,0,0,0.6),
+      inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+
+  .eyebrow{
+    font-family: var(--mono);
+    font-size:11px;
+    letter-spacing:0.28em;
+    text-transform:uppercase;
+    color:var(--text-dim);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:14px;
+  }
+
+  .eyebrow .status{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    color:var(--text-dim);
+  }
+
+  .dot{
+    width:7px; height:7px; border-radius:50%;
+    background:var(--text-dim);
+    transition:background .3s ease, box-shadow .3s ease;
+  }
+  .dot.live{
+    background:var(--live);
+    box-shadow:0 0 8px 1px rgba(255,82,82,0.7);
+    animation: blink 1.6s ease-in-out infinite;
+  }
+  @keyframes blink{ 0%,100%{opacity:1;} 50%{opacity:.45;} }
+
+  .readout{
+    position:relative;
+    height:120px;
+    background: linear-gradient(180deg, #0e0d0b 0%, #151310 100%);
+    border-radius:10px;
+    border:1px solid #100f0c;
+    box-shadow: inset 0 2px 10px rgba(0,0,0,0.7);
+    overflow:hidden;
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+    gap:4px;
+    padding:14px 16px 12px;
+  }
+
+  .readout::before{
+    content:"";
+    position:absolute; inset:0;
+    background: repeating-linear-gradient(
+      180deg, rgba(255,255,255,0.025) 0px, rgba(255,255,255,0.025) 1px,
+      transparent 1px, transparent 3px
+    );
+    pointer-events:none;
+  }
+
+  .bar{
+    width:5px;
+    min-height:3px;
+    border-radius:2px 2px 0 0;
+    background: linear-gradient(180deg, var(--amber) 0%, var(--amber-dim) 100%);
+    opacity:0.25;
+    transition: opacity .3s ease;
+  }
+  .bar.active{ opacity:1; }
+
+  .readout-msg{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:0 16px;
+    font-family:var(--mono);
+    font-size:12px;
+    letter-spacing:0.05em;
+    color:var(--text-dim);
+    pointer-events:none;
+  }
+
+  .controls{
+    display:flex;
+    align-items:center;
+    gap:18px;
+    margin-top:20px;
+  }
+
+  .play-btn{
+    flex:none;
+    width:64px; height:64px;
+    border-radius:50%;
+    border:1px solid #47412f;
+    background: radial-gradient(circle at 35% 30%, #3a3527, #1c1a14 70%);
+    box-shadow:
+      0 6px 14px rgba(0,0,0,0.5),
+      inset 0 1px 1px rgba(255,255,255,0.08),
+      inset 0 -3px 6px rgba(0,0,0,0.5);
+    color:var(--amber);
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    transition: transform .12s ease, box-shadow .12s ease;
+  }
+  .play-btn:hover{ transform: translateY(-1px); }
+  .play-btn:active{ transform: translateY(1px) scale(0.97); }
+  .play-btn:focus-visible{ outline:2px solid var(--amber); outline-offset:3px; }
+  .play-btn svg{ width:22px; height:22px; }
+
+  .volume-wrap{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  .volume-label{
+    font-family:var(--mono);
+    font-size:10px;
+    letter-spacing:0.18em;
+    color:var(--text-dim);
+    text-transform:uppercase;
+  }
+
+  input[type="range"]{
+    -webkit-appearance:none;
+    appearance:none;
+    width:100%;
+    height:4px;
+    border-radius:2px;
+    background: linear-gradient(90deg, var(--amber) 0%, var(--amber) var(--fill,60%), #3a352c var(--fill,60%), #3a352c 100%);
+    outline:none;
+  }
+  input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:16px; height:16px;
+    border-radius:50%;
+    background:#e7ded0;
+    border:2px solid #4d4636;
+    box-shadow:0 1px 3px rgba(0,0,0,0.5);
+    cursor:pointer;
+    margin-top:-6px;
+  }
+  input[type="range"]::-moz-range-thumb{
+    width:16px; height:16px;
+    border-radius:50%;
+    background:#e7ded0;
+    border:2px solid #4d4636;
+    cursor:pointer;
+  }
+  input[type="range"]:focus-visible{ outline:2px solid var(--amber); outline-offset:4px; }
+
+  .tune{
+    margin-top:22px;
+    padding-top:18px;
+    border-top:1px solid var(--panel-edge);
+  }
+  .tune-label{
+    font-family:var(--mono);
+    font-size:10px;
+    letter-spacing:0.18em;
+    color:var(--text-dim);
+    text-transform:uppercase;
+    margin-bottom:8px;
+    display:block;
+  }
+  .tune-row{
+    display:flex;
+    gap:8px;
+  }
+  .tune-row input[type="text"]{
+    flex:1;
+    min-width:0;
+    background:#0e0d0b;
+    border:1px solid #100f0c;
+    border-radius:8px;
+    padding:10px 12px;
+    color:var(--text);
+    font-family:var(--mono);
+    font-size:12px;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.6);
+  }
+  .tune-row input[type="text"]::placeholder{ color:#5a5346; }
+  .tune-row input[type="text"]:focus-visible{ outline:2px solid var(--amber); outline-offset:2px; }
+
+  .tune-row button{
+    flex:none;
+    background:#2c2820;
+    border:1px solid #47412f;
+    color:var(--amber);
+    font-family:var(--mono);
+    font-size:11px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    border-radius:8px;
+    padding:0 16px;
+    cursor:pointer;
+    transition: background .15s ease;
+  }
+  .tune-row button:hover{ background:#39332a; }
+  .tune-row button:focus-visible{ outline:2px solid var(--amber); outline-offset:2px; }
+
+  @media (prefers-reduced-motion: reduce){
+    .dot.live{ animation:none; }
+    .bar{ transition:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="radio-unit">
+  <div class="eyebrow">
+    <span>Internet Radio</span>
+    <span class="status"><span class="dot" id="statusDot"></span><span id="statusText">Off air</span></span>
+  </div>
+
+  <div class="readout" id="readout">
+    <div class="readout-msg" id="readoutMsg">Enter a stream URL below to begin</div>
+  </div>
+
+  <div class="controls">
+    <button class="play-btn" id="playBtn" aria-label="Play" aria-pressed="false">
+      <svg id="playIcon" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+      <svg id="pauseIcon" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
+    </button>
+    <div class="volume-wrap">
+      <span class="volume-label">Volume</span>
+      <input type="range" id="volume" min="0" max="100" value="70" aria-label="Volume">
+    </div>
+  </div>
+
+  <div class="tune">
+    <label class="tune-label" for="streamUrl">Stream URL</label>
+    <div class="tune-row">
+      <input type="text" id="streamUrl" placeholder="https://stream.example.com/live.mp3" autocomplete="off" spellcheck="false">
+      <button id="loadBtn">Tune</button>
+    </div>
+  </div>
+</div>
+
+<audio id="audio" preload="none"></audio>
+
+<script>
+(function(){
+  const audio = document.getElementById('audio');
+  const playBtn = document.getElementById('playBtn');
+  const playIcon = document.getElementById('playIcon');
+  const pauseIcon = document.getElementById('pauseIcon');
+  const volume = document.getElementById('volume');
+  const streamUrl = document.getElementById('streamUrl');
+  const loadBtn = document.getElementById('loadBtn');
+  const statusDot = document.getElementById('statusDot');
+  const statusText = document.getElementById('statusText');
+  const readout = document.getElementById('readout');
+  const readoutMsg = document.getElementById('readoutMsg');
+
+  const BAR_COUNT = 28;
+  const bars = [];
+  for(let i=0;i<BAR_COUNT;i++){
+    const b = document.createElement('div');
+    b.className = 'bar';
+    b.style.height = '3px';
+    readout.appendChild(b);
+    bars.push(b);
+  }
+
+  let animId = null;
+  let isPlaying = false;
+
+  function animateBars(){
+    bars.forEach(b=>{
+      const h = 4 + Math.random()*96;
+      b.style.height = h + '%';
+    });
+    animId = requestAnimationFrame(loopBars);
+  }
+  let lastTick = 0;
+  function loopBars(ts){
+    if(ts - lastTick > 90){
+      lastTick = ts;
+      animateBars();
+    } else {
+      animId = requestAnimationFrame(loopBars);
+    }
+  }
+
+  function startVisual(){
+    bars.forEach(b=>b.classList.add('active'));
+    lastTick = 0;
+    animId = requestAnimationFrame(loopBars);
+  }
+  function stopVisual(){
+    cancelAnimationFrame(animId);
+    bars.forEach(b=>{
+      b.classList.remove('active');
+      b.style.height = '3px';
+    });
+  }
+
+  function setStatus(text, live){
+    statusText.textContent = text;
+    statusDot.classList.toggle('live', !!live);
+  }
+
+  function showMessage(msg){
+    readoutMsg.textContent = msg;
+    readoutMsg.style.display = msg ? 'flex' : 'none';
+  }
+
+  function setPlayingUI(playing){
+    isPlaying = playing;
+    playIcon.style.display = playing ? 'none' : 'block';
+    pauseIcon.style.display = playing ? 'block' : 'none';
+    playBtn.setAttribute('aria-label', playing ? 'Pause' : 'Play');
+    playBtn.setAttribute('aria-pressed', playing ? 'true' : 'false');
+    if(playing){ startVisual(); } else { stopVisual(); }
+  }
+
+  function loadStation(url){
+    if(!url) return;
+    audio.pause();
+    setPlayingUI(false);
+    audio.src = url;
+    audio.load();
+    showMessage('Buffering…');
+    setStatus('Connecting…', false);
+    localStorage.setItem('radioPlayerLastUrl', url);
+    audio.play().catch(()=>{
+      // autoplay may be blocked until user gesture; that's fine, button still works
+    });
+  }
+
+  playBtn.addEventListener('click', ()=>{
+    if(!audio.src){
+      const url = streamUrl.value.trim();
+      if(!url){
+        streamUrl.focus();
+        return;
+      }
+      loadStation(url);
+      return;
+    }
+    if(audio.paused){
+      audio.play().catch(()=>{
+        showMessage('Could not start playback');
+        setStatus('Error', false);
+      });
+    } else {
+      audio.pause();
+    }
+  });
+
+  loadBtn.addEventListener('click', ()=>{
+    const url = streamUrl.value.trim();
+    if(!url){ streamUrl.focus(); return; }
+    loadStation(url);
+  });
+
+  streamUrl.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){ loadBtn.click(); }
+  });
+
+  audio.addEventListener('playing', ()=>{
+    showMessage('');
+    setStatus('Live', true);
+    setPlayingUI(true);
+  });
+  audio.addEventListener('pause', ()=>{
+    setStatus('Paused', false);
+    setPlayingUI(false);
+  });
+  audio.addEventListener('waiting', ()=>{
+    showMessage('Buffering…');
+    setStatus('Buffering…', false);
+  });
+  audio.addEventListener('error', ()=>{
+    showMessage('Signal lost — check the stream URL');
+    setStatus('Error', false);
+    setPlayingUI(false);
+  });
+  audio.addEventListener('ended', ()=>{
+    setStatus('Off air', false);
+    setPlayingUI(false);
+  });
+
+  function applyVolume(){
+    const v = Number(volume.value);
+    audio.volume = v/100;
+    volume.style.setProperty('--fill', v + '%');
+  }
+  volume.addEventListener('input', applyVolume);
+  applyVolume();
+
+  // Default stream — used the first time the page loads, or if nothing is saved yet
+  const DEFAULT_STREAM_URL = 'http://190.66.255.50:8000/listen.m3u';
+
+  // Restore last-used stream URL if there is one, otherwise fall back to the default
+  const saved = localStorage.getItem('radioPlayerLastUrl');
+  const initialUrl = saved || DEFAULT_STREAM_URL;
+  streamUrl.value = initialUrl;
+  audio.src = initialUrl;
+  audio.load();
+  showMessage('Press Play to start listening');
+})();
+</script>
+
+</body>
+</html>
